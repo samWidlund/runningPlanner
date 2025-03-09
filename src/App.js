@@ -33,14 +33,15 @@ const App = () => {
   })
 
   const [inputValue, setInputValue] = useState('');
+  const [enteredLocation, setEnteredLocation] = useState('');
+
   const handleChange = (event) => {
     setInputValue(event.target.value);
   };
 
-  function inputLocation(location) {
-    fetchCordinates(location).then(({ lat, lng }) => setCenter( {lat, lng}));
-    
-    // return value?
+  function inputLocation() {
+    fetchCordinates(inputValue).then(({ lat, lng }) => setCenter( {lat, lng}));
+    setEnteredLocation(inputValue);
   }
 
   async function fetchCordinates(location) { 
@@ -54,8 +55,7 @@ const App = () => {
     }
   }
   useEffect(() => { 
-    fetchCordinates("Stockholm").then(({ lat, lng }) => console.log("coordinates:", { lat, lng }));
-    fetchCordinates("Umeå").then(({ lat, lng }) => setCenter( {lat, lng}));
+    // fetchCordinates("Umeå").then(({ lat, lng }) => setCenter( {lat, lng}));
   }, []);
 
   const { isLoaded, loadError } = useLoadScript({
@@ -66,16 +66,9 @@ const App = () => {
 
   return (
     <div>
-      <button onClick={() => fetchCordinates("Åre")}>
-        Byt till Åre
-      </button>
-      <button onClick={() => fetchCordinates("Uppsala")}>
-        Byt till Uppsala
-      </button>
-
       <input type="text" placeholder="location" value={inputValue} onChange={handleChange} />
       <button onClick={inputLocation}>Insert</button>
-      <p>Current Input Value: {inputValue}</p>
+      <p>Current Input Value: {enteredLocation}</p>
       
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
