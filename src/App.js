@@ -28,7 +28,7 @@ setDefaults({
 
 const App = () => {
   const [center, setCenter] = useState({
-    lat: 59.87240559999999,
+    lat: 59.87240559999999, // original cords
     lng: 17.887085,
   })
 
