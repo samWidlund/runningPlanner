@@ -1,81 +1,99 @@
-import React, { useState, useEffect } from 'react';
-import { GoogleMap, useLoadScript, Marker, InfoBox, InfoWindow } from '@react-google-maps/api';
-import {
-  setDefaults,
-  fromAddress,
-  fromLatLng,
-  fromPlaceId,
-  setLocationType,
-  geocode,
-  RequestType,
-} from "react-geocode";
+import React, { useState } from "react";
+import { GoogleMap, useLoadScript, DirectionsRenderer } from "@react-google-maps/api";
+import { setDefaults, fromAddress } from "react-geocode";
+
+// apiKey defined in .env
+const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+if (!apiKey) console.error("Google Maps API Key is missing!");
 
 const mapContainerStyle = {
-  width: '100vw',
-  height: '100vh',
+  width: "100vw",
+  height: "100vh",
 };
 
-const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
-if (!apiKey) {
-  console.error("Google Maps API Key is missing!");
-}
-
 setDefaults({
-  key: apiKey, 
+  key: apiKey,
   language: "sv",
   region: "se",
 });
 
 const App = () => {
-  const [center, setCenter] = useState({
-    lat: 59.87240559999999, // original cords
-    lng: 17.887085,
-  })
+  const [center, setCenter] = useState({ lat: 59.8586, lng: 17.6389 }); // Uppsala
+  const [origin, setOrigin] = useState("");
+  const [destination, setDestination] = useState("");
+  const [directionsResponse, setDirectionsResponse] = useState(null);
+  const [distance, setDistance] = useState("");
 
-  const [inputValue, setInputValue] = useState('');
-  const [enteredLocation, setEnteredLocation] = useState('');
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: apiKey,
+  });
 
-  const handleChange = (event) => {
-    setInputValue(event.target.value);
+  const fetchCoordinates = async (address) => {
+    try {
+      const { results } = await fromAddress(address);
+      return results[0].geometry.location;
+    } catch (error) {
+      console.error("Error fetching coordinates:", error);
+      return null;
+    }
   };
 
-  function inputLocation() {
-    fetchCordinates(inputValue).then(({ lat, lng }) => setCenter( {lat, lng}));
-    setEnteredLocation(inputValue);
-  }
-
-  async function fetchCordinates(location) { 
-    try {
-      const { results } = await fromAddress(location);
-      const { lat, lng } = results[0].geometry.location;
-
-      return ( {lat, lng} );
-      } catch(error) {
-      console.error(error);
+  const calculateRoute = async () => {
+    if (!window.google || !window.google.maps) {
+      console.error("Google Maps API is not loaded.");
+      return;
     }
-  }
-  useEffect(() => { 
-    // fetchCordinates("Umeå").then(({ lat, lng }) => setCenter( {lat, lng}));
-  }, []);
 
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: apiKey
-  });
-  if (loadError) {return <div>Error loading maps</div>;}
-  if (!isLoaded) {return <div>Loading maps</div>;}
+    const originCoords = await fetchCoordinates(origin);
+    const destinationCoords = await fetchCoordinates(destination);
+
+    if (!originCoords || !destinationCoords) {
+      console.error("Invalid addresses");
+      return;
+    }
+
+    const directionsService = new window.google.maps.DirectionsService();
+
+    directionsService.route(
+      {
+        origin: originCoords,
+        destination: destinationCoords,
+        travelMode: window.google.maps.TravelMode.WALKING,
+      },
+      (result, status) => {
+        if (status === "OK") {
+          setDirectionsResponse(result);
+          setCenter(originCoords);
+
+          const routeDistance = result.routes[0].legs[0].distance.text;
+          setDistance(routeDistance);
+        } else {
+          console.error("Directions request failed:", status);
+        }
+      }
+    );
+  };
+
+  if (!isLoaded) return <div>Laddar karta...</div>;
 
   return (
     <div>
-      <input type="text" placeholder="location" value={inputValue} onChange={handleChange} />
-      <button onClick={inputLocation}>Insert</button>
-      <p>Current Input Value: {enteredLocation}</p>
-      
-      <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        zoom={10}
-        center={center}
-      >
-        <Marker position={center} />
+      <input
+        type="text"
+        placeholder="Startplats"
+        value={origin}
+        onChange={(e) => setOrigin(e.target.value)}
+      />
+      <input
+        type="text"
+        placeholder="Destination"
+        value={destination}
+        onChange={(e) => setDestination(e.target.value)}
+      />
+      <button onClick={calculateRoute}>Beräkna rutt</button>
+      <p>Distance: {distance}</p>
+      <GoogleMap mapContainerStyle={mapContainerStyle} zoom={10} center={center}>
+        {directionsResponse && <DirectionsRenderer directions={directionsResponse} />}
       </GoogleMap>
     </div>
   );
